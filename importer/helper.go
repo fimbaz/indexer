@@ -52,7 +52,7 @@ func (h *ImportHelper) Import(db idb.IndexerDb, args []string) {
 		maybeFail(err, h.Log, "problem getting the import state")
 	}
 
-	imp := NewImporter(db)
+	imp := NewImporter(db, false)
 
 	blocks := 0
 	txCount := 0

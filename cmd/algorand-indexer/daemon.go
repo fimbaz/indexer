@@ -33,6 +33,7 @@ var (
 	tokenString      string
 	writeTimeout     time.Duration
 	readTimeout      time.Duration
+	validateWrites   bool
 )
 
 var daemonCmd = &cobra.Command{
@@ -97,7 +98,7 @@ var daemonCmd = &cobra.Command{
 				maybeFail(err, "failed to get next round, %v", err)
 				bot.SetNextRound(nextRound)
 
-				bih := blockImporterHandler{imp: importer.NewImporter(db)}
+				bih := blockImporterHandler{imp: importer.NewImporter(db, validateWrites)}
 				bot.AddBlockHandler(&bih)
 				bot.SetContext(ctx)
 
@@ -128,6 +129,7 @@ func init() {
 	daemonCmd.Flags().StringVarP(&metricsMode, "metrics-mode", "", "OFF", "configure the /metrics endpoint to [ON, OFF, VERBOSE]")
 	daemonCmd.Flags().DurationVarP(&writeTimeout, "write-timeout", "", 30*time.Second, "set the maximum duration to wait before timing out writes to a http response, breaking connection")
 	daemonCmd.Flags().DurationVarP(&readTimeout, "read-timeout", "", 5*time.Second, "set the maximum duration for reading the entire request")
+	daemonCmd.Flags().BoolVar(&validateWrites, "validate-writes", false, "validate account data written to the database")
 
 	viper.RegisterAlias("algod", "algod-data-dir")
 	viper.RegisterAlias("algod-net", "algod-address")

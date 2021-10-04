@@ -9,16 +9,19 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/algorand/go-algorand/config"
+	"github.com/algorand/go-algorand/crypto"
 	"github.com/algorand/go-algorand/data/basics"
 	"github.com/algorand/go-algorand/data/bookkeeping"
 	"github.com/algorand/go-algorand/data/transactions"
 	"github.com/algorand/go-algorand/ledger"
 	"github.com/algorand/go-algorand/ledger/ledgercore"
+	"github.com/algorand/go-algorand/protocol"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -158,9 +161,66 @@ func (db *IndexerDb) init(opts idb.IndexerDbOptions) (chan struct{}, error) {
 	return db.runAvailableMigrations()
 }
 
+func validate(tx pgx.Tx, delta *ledgercore.AccountDeltas, genesisHash crypto.Digest, specialAddresses transactions.SpecialAddresses) error {
+	l, err := ledger_for_evaluator.MakeLedgerForEvaluator(
+		tx, genesisHash, specialAddresses)
+	if err != nil {
+		return fmt.Errorf("validate() err: %w", err)
+	}
+	defer l.Close()
+
+	addressesMap := make(map[basics.Address]struct{}, delta.Len())
+	for i := 0; i < delta.Len(); i++ {
+		address, _ := delta.GetByIdx(i)
+		addressesMap[address] = struct{}{}
+	}
+
+	err = l.PreloadAccounts(addressesMap)
+	if err != nil {
+		return fmt.Errorf("validate() err: %w", err)
+	}
+
+	for i := 0; i < delta.Len(); i++ {
+		address, accountData := delta.GetByIdx(i)
+
+		// TODO: delete this check when we add support for special accounts.
+		if (address != specialAddresses.FeeSink) &&
+			(address != specialAddresses.RewardsPool) {
+			ret, _, err := l.LookupWithoutRewards(basics.Round(0), address)
+			if err != nil {
+				return fmt.Errorf("validate() err: %w", err)
+			}
+
+			// Encode account data into msgpack and decode to simulate algod. One effect of
+			// this is making the empty maps nil maps.
+			var expected basics.AccountData
+			err = protocol.Decode(protocol.Encode(&accountData), &expected)
+			if err != nil {
+				return fmt.Errorf("validate() decode err: %w", err)
+			}
+			// TODO: delete after cleanup.
+			expected.TotalAppSchema = basics.StateSchema{}
+			expected.TotalExtraAppPages = 0
+
+			if !reflect.DeepEqual(expected, ret) {
+				return fmt.Errorf(
+					"validate() difference in account data, "+
+						"address: %s expected: %+v ret: %+v diff:%s",
+					address, expected, ret, util.Diff(accountData, ret))
+			}
+		}
+	}
+
+	return nil
+}
+
 // AddBlock is part of idb.IndexerDb.
-func (db *IndexerDb) AddBlock(block *bookkeeping.Block) error {
-	db.log.Printf("adding block %d", block.Round())
+func (db *IndexerDb) AddBlock(block *bookkeeping.Block, validateWrites bool) error {
+	if validateWrites {
+		db.log.Printf("adding block %d with validation", block.Round())
+	} else {
+		db.log.Printf("adding block %d", block.Round())
+	}
 
 	db.accountingLock.Lock()
 	defer db.accountingLock.Unlock()
@@ -208,15 +268,16 @@ func (db *IndexerDb) AddBlock(block *bookkeeping.Block) error {
 			if err != nil {
 				return fmt.Errorf("AddBlock() err: %w", err)
 			}
-			defer ledgerForEval.Close()
 
 			err = ledgerForEval.PreloadAccounts(ledger.GetBlockAddresses(block))
 			if err != nil {
+				ledgerForEval.Close()
 				return fmt.Errorf("AddBlock() err: %w", err)
 			}
 
 			proto, ok := config.Consensus[block.BlockHeader.CurrentProtocol]
 			if !ok {
+				ledgerForEval.Close()
 				return fmt.Errorf(
 					"AddBlock() cannot find proto version %s", block.BlockHeader.CurrentProtocol)
 			}
@@ -224,14 +285,23 @@ func (db *IndexerDb) AddBlock(block *bookkeeping.Block) error {
 
 			start := time.Now()
 			delta, modifiedTxns, err := ledger.Eval(ledgerForEval, block, proto)
+			duration := time.Since(start)
+			ledgerForEval.Close()
 			if err != nil {
 				return fmt.Errorf("AddBlock() eval err: %w", err)
 			}
-			metrics.PostgresEvalTimeSeconds.Observe(time.Since(start).Seconds())
+			metrics.PostgresEvalTimeSeconds.Observe(duration.Seconds())
 
 			err = writer.AddBlock(block, modifiedTxns, delta)
 			if err != nil {
 				return fmt.Errorf("AddBlock() err: %w", err)
+			}
+
+			if validateWrites {
+				err = validate(tx, &delta.Accts, block.GenesisHash(), specialAddresses)
+				if err != nil {
+					return fmt.Errorf("AddBlock() err: %w", err)
+				}
 			}
 		}
 

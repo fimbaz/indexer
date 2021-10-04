@@ -36,7 +36,7 @@ type Args struct {
 	LogLevel                 string
 	ReportDirectory          string
 	ResetReportDir           bool
-	RunValidation            bool
+	Validate                 bool
 }
 
 // Run is a public helper to run the tests.
@@ -88,7 +88,7 @@ func (r *Args) run() error {
 	indexerNet := fmt.Sprintf("localhost:%d", r.IndexerPort)
 	generatorShutdownFunc, generator := startGenerator(r.Path, algodNet, blockMiddleware)
 
-	indexerShutdownFunc, err := startIndexer(logfile, r.LogLevel, r.IndexerBinary, algodNet, indexerNet, r.PostgresConnectionString, r.CPUProfilePath)
+	indexerShutdownFunc, err := startIndexer(logfile, r.LogLevel, r.IndexerBinary, algodNet, indexerNet, r.PostgresConnectionString, r.CPUProfilePath, r.Validate)
 	if err != nil {
 		return fmt.Errorf("failed to start indexer: %w", err)
 	}
@@ -106,7 +106,7 @@ func (r *Args) run() error {
 	}
 
 	// Optionally run the validator
-	if r.RunValidation {
+	if r.Validate {
 		// Freeze blocks to avoid data races.
 		freezeMutex.Lock()
 
@@ -394,7 +394,7 @@ func startGenerator(configFile string, addr string, blockMiddleware func(http.Ha
 
 // startIndexer resets the postgres database and executes the indexer binary. It performs some simple verification to
 // ensure that the service has started properly.
-func startIndexer(logfile string, loglevel string, indexerBinary string, algodNet string, indexerNet string, postgresConnectionString string, cpuprofile string) (func() error, error) {
+func startIndexer(logfile string, loglevel string, indexerBinary string, algodNet string, indexerNet string, postgresConnectionString string, cpuprofile string, validateWrites bool) (func() error, error) {
 	{
 		conn, err := pgx.Connect(context.Background(), postgresConnectionString)
 		if err != nil {
@@ -409,8 +409,7 @@ func startIndexer(logfile string, loglevel string, indexerBinary string, algodNe
 		}
 	}
 
-	cmd := exec.Command(
-		indexerBinary,
+	args := []string{
 		"daemon",
 		"--algod-net", algodNet,
 		"--algod-token", "secure-token-here",
@@ -419,7 +418,11 @@ func startIndexer(logfile string, loglevel string, indexerBinary string, algodNe
 		"--server", indexerNet,
 		"--logfile", logfile,
 		"--loglevel", loglevel,
-		"--cpuprofile", cpuprofile)
+		"--cpuprofile", cpuprofile}
+	if validateWrites {
+		args = append(args, "--validate-writes")
+	}
+	cmd := exec.Command(indexerBinary, args...)
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer

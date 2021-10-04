@@ -145,7 +145,7 @@ func TestAssetCloseReopenTransfer(t *testing.T) {
 	//////////
 	// When // We commit the block to the database
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -194,7 +194,7 @@ func TestReCreateAssetHolding(t *testing.T) {
 		//////////
 		// When // We commit the round accounting to the database.
 		//////////
-		err = db.AddBlock(&block)
+		err = db.AddBlock(&block, true)
 		require.NoError(t, err)
 
 		//////////
@@ -229,7 +229,7 @@ func TestNoopOptins(t *testing.T) {
 	//////////
 	// When // We commit the round accounting to the database.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -267,7 +267,7 @@ func TestMultipleWriters(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			errors <- db.AddBlock(&block)
+			errors <- db.AddBlock(&block, true)
 		}()
 	}
 	close(start)
@@ -326,7 +326,7 @@ func TestBlockWithTransactions(t *testing.T) {
 
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, txns...)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -367,7 +367,7 @@ func TestRekeyBasic(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -395,7 +395,7 @@ func TestRekeyToItself(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	txn = test.MakePaymentTxn(
@@ -404,7 +404,7 @@ func TestRekeyToItself(t *testing.T) {
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -439,7 +439,7 @@ func TestRekeyThreeTimesInSameRound(t *testing.T) {
 		test.MakeGenesisBlock().BlockHeader, &txn0, &txn1, &txn2)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -471,7 +471,7 @@ func TestRekeyToItselfHasNotBeenRekeyed(t *testing.T) {
 	//////////
 	// Then // No error when committing to the DB.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 }
 
@@ -502,7 +502,7 @@ func TestIgnoreDefaultFrozenConfigUpdate(t *testing.T) {
 	//////////
 	// When // We commit the round accounting to the database.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -533,7 +533,7 @@ func TestZeroTotalAssetCreate(t *testing.T) {
 	//////////
 	// When // We commit the round accounting to the database.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -587,7 +587,7 @@ func TestDestroyAssetBasic(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Destroy an asset.
@@ -595,7 +595,7 @@ func TestDestroyAssetBasic(t *testing.T) {
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Check that the asset is deleted.
@@ -623,7 +623,7 @@ func TestDestroyAssetZeroSupply(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn0, &txn1)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Check that the asset is deleted.
@@ -677,7 +677,7 @@ func TestDestroyAssetDeleteCreatorsHolding(t *testing.T) {
 	block, err := test.MakeBlockForTxns(
 		test.MakeGenesisBlock().BlockHeader, &txn0, &txn1, &txn2)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Check that the creator's asset holding is deleted.
@@ -723,7 +723,7 @@ func TestAssetFreezeTxnParticipation(t *testing.T) {
 	//////////
 	// When // We import the block.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -791,7 +791,7 @@ func TestInnerTxnParticipation(t *testing.T) {
 	//////////
 	// When // We import the block.
 	//////////
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	//////////
@@ -840,7 +840,7 @@ func TestAppExtraPages(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err, "failed to commit")
 
 	row := db.db.QueryRow(context.Background(), "SELECT index, params FROM app WHERE creator = $1", test.AccountA[:])
@@ -912,7 +912,7 @@ func TestKeytypeBasic(t *testing.T) {
 
 	block, err := test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	keytype := "sig"
@@ -926,7 +926,7 @@ func TestKeytypeBasic(t *testing.T) {
 
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	keytype = "msig"
@@ -945,7 +945,7 @@ func TestLargeAssetAmount(t *testing.T) {
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	{
@@ -1082,7 +1082,7 @@ func TestNonDisplayableUTF8(t *testing.T) {
 			require.NoError(t, err)
 
 			// Test 1: import/accounting should work.
-			err = db.AddBlock(&block)
+			err = db.AddBlock(&block, true)
 			require.NoError(t, err)
 
 			// Test 2: asset results properly serialized
@@ -1151,7 +1151,7 @@ func TestReconfigAsset(t *testing.T) {
 		0, math.MaxUint64, 0, false, unit, name, url, test.AccountA)
 	block, err := test.MakeBlockForTxns(test.MakeGenesisBlock().BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	txn = transactions.SignedTxnWithAD{
@@ -1176,7 +1176,7 @@ func TestReconfigAsset(t *testing.T) {
 	}
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Test 2: asset results properly serialized
@@ -1209,7 +1209,7 @@ func TestKeytypeResetsOnRekey(t *testing.T) {
 
 	block, err := test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	keytype := "sig"
@@ -1221,7 +1221,7 @@ func TestKeytypeResetsOnRekey(t *testing.T) {
 
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	assertKeytype(t, db, test.AccountA, nil)
@@ -1235,7 +1235,7 @@ func TestKeytypeResetsOnRekey(t *testing.T) {
 
 	block, err = test.MakeBlockForTxns(block.BlockHeader, &txn)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	keytype = "msig"
@@ -1290,7 +1290,7 @@ func TestAddBlockAssetCloseAmountInTxnExtra(t *testing.T) {
 		&optinC, &closeB)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Check asset close amount in the `closeB` transaction.
@@ -1325,7 +1325,7 @@ func TestAddBlockIncrementsMaxRoundAccounted(t *testing.T) {
 	assert.Equal(t, uint64(0), round)
 
 	block := test.MakeGenesisBlock()
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	round, err = db.GetNextRoundToAccount()
@@ -1334,7 +1334,7 @@ func TestAddBlockIncrementsMaxRoundAccounted(t *testing.T) {
 
 	block, err = test.MakeBlockForTxns(block.BlockHeader)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	round, err = db.GetNextRoundToAccount()
@@ -1343,7 +1343,7 @@ func TestAddBlockIncrementsMaxRoundAccounted(t *testing.T) {
 
 	block, err = test.MakeBlockForTxns(block.BlockHeader)
 	require.NoError(t, err)
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	round, err = db.GetNextRoundToAccount()
@@ -1365,7 +1365,7 @@ func TestAddBlockCreateDeleteAccountSameRound(t *testing.T) {
 		test.MakeGenesisBlock().BlockHeader, &createTxn, &deleteTxn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	opts := idb.AccountQueryOptions{
@@ -1398,7 +1398,7 @@ func TestAddBlockCreateDeleteAssetSameRound(t *testing.T) {
 		test.MakeGenesisBlock().BlockHeader, &createTxn, &deleteTxn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	// Asset global state.
@@ -1453,7 +1453,7 @@ func TestAddBlockCreateDeleteAppSameRound(t *testing.T) {
 		test.MakeGenesisBlock().BlockHeader, &createTxn, &deleteTxn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	yes := true
@@ -1488,7 +1488,7 @@ func TestAddBlockAppOptInOutSameRound(t *testing.T) {
 		test.MakeGenesisBlock().BlockHeader, &createTxn, &optInTxn, &optOutTxn)
 	require.NoError(t, err)
 
-	err = db.AddBlock(&block)
+	err = db.AddBlock(&block, true)
 	require.NoError(t, err)
 
 	opts := idb.AccountQueryOptions{

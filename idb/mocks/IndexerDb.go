@@ -21,13 +21,13 @@ type IndexerDb struct {
 	mock.Mock
 }
 
-// AddBlock provides a mock function with given fields: block
-func (_m *IndexerDb) AddBlock(block *bookkeeping.Block) error {
-	ret := _m.Called(block)
+// AddBlock provides a mock function with given fields: block, validateWrites
+func (_m *IndexerDb) AddBlock(block *bookkeeping.Block, validateWrites bool) error {
+	ret := _m.Called(block, validateWrites)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*bookkeeping.Block) error); ok {
-		r0 = rf(block)
+	if rf, ok := ret.Get(0).(func(*bookkeeping.Block, bool) error); ok {
+		r0 = rf(block, validateWrites)
 	} else {
 		r0 = ret.Error(0)
 	}

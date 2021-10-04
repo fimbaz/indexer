@@ -74,7 +74,7 @@ var ErrorNotInitialized error = errors.New("accounting not initialized")
 // TODO: cockroachdb impl
 type IndexerDb interface {
 	// Import a block and do the accounting.
-	AddBlock(block *bookkeeping.Block) error
+	AddBlock(block *bookkeeping.Block, validateWrites bool) error
 
 	LoadGenesis(genesis bookkeeping.Genesis) (err error)
 

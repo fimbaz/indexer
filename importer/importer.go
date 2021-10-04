@@ -11,7 +11,8 @@ import (
 
 // Importer is used to import blocks into an idb.IndexerDb object.
 type Importer struct {
-	db idb.IndexerDb
+	db             idb.IndexerDb
+	validateWrites bool
 }
 
 // ImportBlock processes a block and adds it to the IndexerDb
@@ -22,10 +23,10 @@ func (imp *Importer) ImportBlock(blockContainer *rpcs.EncodedBlockCert) error {
 	if !ok {
 		return fmt.Errorf("protocol %s not found", block.CurrentProtocol)
 	}
-	return imp.db.AddBlock(&blockContainer.Block)
+	return imp.db.AddBlock(&blockContainer.Block, imp.validateWrites)
 }
 
 // NewImporter creates a new importer object.
-func NewImporter(db idb.IndexerDb) Importer {
-	return Importer{db: db}
+func NewImporter(db idb.IndexerDb, validateWrites bool) Importer {
+	return Importer{db: db, validateWrites: validateWrites}
 }
