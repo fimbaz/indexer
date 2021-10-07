@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/algorand/go-algorand/config"
+	"github.com/algorand/go-algorand/crypto"
 	"github.com/algorand/go-algorand/data/basics"
 	"github.com/algorand/go-algorand/data/bookkeeping"
 	"github.com/algorand/go-algorand/data/transactions"
@@ -2046,4 +2047,40 @@ func (db *IndexerDb) GetSpecialAccounts() (transactions.SpecialAddresses, error)
 	}
 
 	return accounts, nil
+}
+
+func (db *IndexerDb) GetAccountData(genesisHash crypto.Digest, specialAddresses transactions.SpecialAddresses, addresses []basics.Address) (map[basics.Address]basics.AccountData, error) {
+	tx, err := db.db.BeginTx(context.Background(), readonlyRepeatableRead)
+	if err != nil {
+		return nil, fmt.Errorf("GetAccountData() begin tx err: %w", err)
+	}
+	defer tx.Rollback(context.Background())
+
+	l, err := ledger_for_evaluator.MakeLedgerForEvaluator(
+		tx, genesisHash, specialAddresses)
+	if err != nil {
+		return nil, fmt.Errorf("GetAccountData() err: %w", err)
+	}
+	defer l.Close()
+
+	addressesMap := make(map[basics.Address]struct{}, len(addresses))
+	for _, address := range addresses {
+		addressesMap[address] = struct{}{}
+	}
+	err = l.PreloadAccounts(addressesMap)
+	if err != nil {
+		return nil, fmt.Errorf("GetAccountData() err: %w", err)
+	}
+
+	res := make(map[basics.Address]basics.AccountData, len(addressesMap))
+	for address := range addressesMap {
+		accountData, _, err := l.LookupWithoutRewards(basics.Round(0), address)
+		if err != nil {
+			return nil, fmt.Errorf("GetAccountData() err: %w", err)
+		}
+
+		res[address] = accountData
+	}
+
+	return res, nil
 }
